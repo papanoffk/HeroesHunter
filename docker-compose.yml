@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: hh-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-hh-db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - hh-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-hh-db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  hh-network: 
