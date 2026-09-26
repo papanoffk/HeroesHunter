@@ -1,3 +1,19 @@
+x-auth-common: &auth-common
+  build:
+    context: .
+    dockerfile: services/auth/Dockerfile
+  env_file:
+    - path: ./services/auth/.env
+      required: false
+  environment:
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_USER: ${DB_USER:-admin}
+    DB_PASSWORD: ${DB_PASSWORD:-password}
+    DB_NAME: ${DB_NAME:-hh-db}
+  networks:
+    - hh-network
+
 services:
   postgres:
     image: postgres:17
@@ -18,6 +34,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  auth-migrate:
+    <<: *auth-common
+    container_name: hh-auth-migrate
+    command: ["auth-migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth:
+    <<: *auth-common
+    container_name: hh-auth
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
 
 networks:
   hh-network: 
