@@ -1,3 +1,4 @@
+import os
 from collections.abc import Callable, Iterator
 from typing import Any
 from uuid import UUID, uuid4
@@ -15,7 +16,7 @@ from missions.schemas import Role
 
 @pytest.fixture(scope="session")
 def settings() -> Iterator[Settings]:
-    """Runs the real migrator into a throwaway schema; skips DB tests if Postgres is unavailable."""
+    """Runs the real migrator into a throwaway schema; skips DB tests if Postgres is unavailable (fails on CI)."""
     with pytest.MonkeyPatch.context() as mp:
         mp.setenv("DB_SCHEMA", f"missions_test_{uuid4().hex[:8]}")
         get_settings.cache_clear()
@@ -23,6 +24,8 @@ def settings() -> Iterator[Settings]:
         try:
             migrate.main()
         except psycopg.OperationalError as exc:
+            if os.environ.get("CI"):
+                pytest.fail(f"Postgres is unavailable on CI: {exc}")
             pytest.skip(f"Postgres is unavailable: {exc}")
         yield settings
         with psycopg.connect(settings.dsn(), autocommit=True) as conn:
