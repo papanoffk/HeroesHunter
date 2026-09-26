@@ -1,7 +1,7 @@
 # Build context: repository root (uv workspace with a shared uv.lock).
 # --frozen: the image contains only this member, so the lock can't be checked
 # against the whole workspace here; run `uv lock --check` in CI instead.
-#   docker build -f services/auth/Dockerfile .
+#   docker build -f services/corporations/Dockerfile .
 
 FROM python:3.12-slim AS builder
 
@@ -17,14 +17,14 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=bind,source=services/auth/pyproject.toml,target=services/auth/pyproject.toml \
-    uv sync --frozen --no-dev --no-install-workspace --package auth
+    --mount=type=bind,source=services/corporations/pyproject.toml,target=services/corporations/pyproject.toml \
+    uv sync --frozen --no-dev --no-install-workspace --package corporations
 
 COPY pyproject.toml uv.lock ./
-COPY services/auth services/auth
+COPY services/corporations services/corporations
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --package auth
+    uv sync --frozen --no-dev --package corporations
 
 
 FROM python:3.12-slim
@@ -37,7 +37,7 @@ COPY --from=builder --chown=app:app /app /app
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 
-WORKDIR /app/services/auth
+WORKDIR /app/services/corporations
 USER app
 
 EXPOSE 8000
@@ -45,4 +45,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
 
-CMD ["uvicorn", "auth.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "corporations.main:app", "--host", "0.0.0.0", "--port", "8000"]
