@@ -10,7 +10,6 @@ MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 
 
 def create_schema(settings: Settings) -> None:
-    # yoyo only sets search_path to the schema, it does not create it.
     with psycopg.connect(settings.dsn(), autocommit=True) as conn:
         conn.execute(
             sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(settings.db_schema))
