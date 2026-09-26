@@ -5,10 +5,10 @@ Registration, authentication and authorization of clients (JWT).
 ## Run
 
 ```bash
-docker compose up -d postgres          # from the repo root
+docker compose up -d postgres
 cd services/auth
-cp .env.example .env                   # set JWT_SECRET
-uv run auth-migrate                    # apply yoyo migrations
+cp .env.example .env
+uv run auth-migrate
 uv run uvicorn auth.main:app --reload
 ```
 
@@ -17,8 +17,8 @@ Swagger UI: http://localhost:8000/docs
 ### Docker
 
 ```bash
-cp services/auth/.env.example services/auth/.env   # set JWT_SECRET
-docker compose up -d --build auth                   # postgres -> auth-migrate -> auth
+cp services/auth/.env.example services/auth/.env
+docker compose up -d --build auth
 ```
 
 The image is built from the repository root, since the uv workspace lockfile lives there:

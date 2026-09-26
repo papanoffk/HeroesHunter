@@ -9,8 +9,7 @@ from auth.schemas import Role, TokenPayload
 
 password_hash = PasswordHash.recommended()
 
-# Verified against when the client is not found, so a failed login takes the
-# same time whether or not the email exists (prevents user enumeration).
+
 DUMMY_HASH = password_hash.hash("dummy-password")
 
 

@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     db_pool_min_size: int = 1
     db_pool_max_size: int = 10
 
-    # No default on purpose: the service must not start with a guessable secret.
     jwt_secret: SecretStr = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = Field(default=30, gt=0)
@@ -29,4 +28,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()  # type: ignore

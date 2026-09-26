@@ -5,7 +5,6 @@ from uuid import UUID
 
 from pydantic import AfterValidator, BaseModel, EmailStr, Field
 
-# Must match rows seeded into the `roles` table by migrations.
 class Role(StrEnum):
     HERO = "hero"
     CORPORATION = "corporation"
