@@ -223,5 +223,39 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: hh-gateway
+    restart: unless-stopped
+    env_file:
+      - path: ./services/gateway/.env
+        required: false
+    environment:
+      AUTH_URL: http://auth:8000
+      HEROES_URL: http://heroes:8000
+      CORPORATIONS_URL: http://corporations:8000
+      MISSIONS_URL: http://missions:8000
+      RESUMES_URL: http://resumes:8000
+      NOTIFICATIONS_URL: http://notifications:8000
+    ports:
+      - "8080:8000"
+    networks:
+      - hh-network
+    depends_on:
+      auth:
+        condition: service_healthy
+      heroes:
+        condition: service_healthy
+      corporations:
+        condition: service_healthy
+      missions:
+        condition: service_healthy
+      resumes:
+        condition: service_healthy
+      notifications:
+        condition: service_healthy
+
 networks:
   hh-network: 
