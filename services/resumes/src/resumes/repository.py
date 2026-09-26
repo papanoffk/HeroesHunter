@@ -98,21 +98,22 @@ class ResumeRepository:
             "DELETE FROM resume WHERE resume_uuid = $1 RETURNING true", resume_uuid
         ) is not None
 
-    async def invite(self, resume_uuid: UUID, corp_uuid: UUID) -> None:
+    async def invite(self, resume_uuid: UUID, corp_uuid: UUID) -> UUID:
+        """Returns the resume owner to notify."""
         # The condition is re-checked on the locked row, so concurrent invitations can't duplicate a corporation.
-        updated = await self._conn.fetchval(
+        owner_uuid = await self._conn.fetchval(
             """
             UPDATE resume
             SET new_invitations_corp_uuids = array_append(new_invitations_corp_uuids, $2)
             WHERE resume_uuid = $1
               AND NOT ($2 = ANY(new_invitations_corp_uuids) OR $2 = ANY(invitations_corp_uuids))
-            RETURNING true
+            RETURNING owner_uuid
             """,
             resume_uuid,
             corp_uuid,
         )
-        if updated:
-            return
+        if owner_uuid is not None:
+            return owner_uuid
         if await self.get(resume_uuid) is None:
             raise ResumeNotFoundError
         raise AlreadyInvitedError

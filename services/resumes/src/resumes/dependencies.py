@@ -6,6 +6,7 @@ import asyncpg
 from fastapi import Depends, Header, HTTPException, Request, status
 from pydantic import ValidationError
 
+from resumes.events import EventPublisher
 from resumes.repository import Resume, ResumeRepository
 from resumes.schemas import Principal, Role
 
@@ -24,6 +25,13 @@ def get_resume_repository(conn: Annotated[asyncpg.Connection, Depends(get_connec
 
 
 ResumeRepositoryDep = Annotated[ResumeRepository, Depends(get_resume_repository)]
+
+
+def get_publisher(request: Request) -> EventPublisher:
+    return request.app.state.publisher
+
+
+PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
 
 
 def get_principal(client_id: ClientIdHeader = None, role: ClientRoleHeader = None) -> Principal:
