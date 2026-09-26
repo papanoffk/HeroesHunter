@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     db_user: str = "admin"
     db_password: SecretStr = SecretStr("password")
     db_name: str = "hh-db"
+    # Each service owns its schema (tables and yoyo bookkeeping) in the shared database.
+    db_schema: str = Field(default="auth", pattern=r"^[a-z_][a-z0-9_]*$")
     db_pool_min_size: int = 1
     db_pool_max_size: int = 10
 

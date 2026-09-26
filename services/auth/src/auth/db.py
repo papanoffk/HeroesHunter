@@ -8,4 +8,5 @@ async def create_pool(settings: Settings) -> asyncpg.Pool:
         dsn=settings.dsn(),
         min_size=settings.db_pool_min_size,
         max_size=settings.db_pool_max_size,
+        server_settings={"search_path": settings.db_schema},
     )
