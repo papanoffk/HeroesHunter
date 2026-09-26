@@ -1,11 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from auth.dependencies import ClientRepositoryDep, SettingsDep, TokenPayloadDep
 from auth.repository import Client, ClientAlreadyExistsError
-from auth.schemas import ClientResponse, LoginRequest, RegisterRequest, TokenResponse
+from auth.schemas import ClientResponse, LoginRequest, RegisterRequest, TokenPayload, TokenResponse
 from auth.security import DUMMY_HASH, create_access_token, password_hash
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+CLIENT_ID_HEADER = "X-Client-Id"
+CLIENT_ROLE_HEADER = "X-Client-Role"
 
 
 def to_response(client: Client) -> ClientResponse:
@@ -47,3 +50,11 @@ async def me(payload: TokenPayloadDep, repo: ClientRepositoryDep) -> ClientRespo
     if client is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
     return to_response(client)
+
+
+@router.get("/verify", status_code=status.HTTP_200_OK)
+async def verify(payload: TokenPayloadDep, response: Response) -> TokenPayload:
+    """Forward auth for the API gateway: identity is passed to services in response headers."""
+    response.headers[CLIENT_ID_HEADER] = str(payload.client_id)
+    response.headers[CLIENT_ROLE_HEADER] = payload.role.value
+    return payload

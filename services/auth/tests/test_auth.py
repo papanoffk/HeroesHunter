@@ -6,7 +6,6 @@ from fastapi import Depends
 from fastapi.testclient import TestClient
 
 from auth.config import Settings
-from auth.dependencies import require_roles
 from auth.schemas import Role
 from auth.security import create_access_token
 
@@ -83,13 +82,18 @@ def test_me_rejects_missing_invalid_and_expired_tokens(client: TestClient, setti
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {expired}"}).status_code == 401
 
 
-def test_require_roles(client: TestClient, settings: Settings) -> None:
-    @client.app.get("/corp-only", dependencies=[Depends(require_roles(Role.CORPORATION))])
-    async def corp_only() -> dict[str, bool]:
-        return {"ok": True}
+def test_verify_returns_identity_headers(client: TestClient) -> None:
+    token = register_and_login(client)
 
-    hero = create_access_token(uuid4(), Role.HERO, settings)
-    corp = create_access_token(uuid4(), Role.CORPORATION, settings)
+    response = client.get("/auth/verify", headers={"Authorization": f"Bearer {token}"})
 
-    assert client.get("/corp-only", headers={"Authorization": f"Bearer {hero}"}).status_code == 403
-    assert client.get("/corp-only", headers={"Authorization": f"Bearer {corp}"}).status_code == 200
+    assert response.status_code == 200
+    assert response.headers["X-Client-Id"] == response.json()["client_id"]
+    assert response.headers["X-Client-Role"] == "hero"
+
+
+def test_verify_rejects_invalid_token(client: TestClient) -> None:
+    response = client.get("/auth/verify", headers={"Authorization": "Bearer garbage"})
+
+    assert response.status_code == 401
+    assert "X-Client-Id" not in response.headers

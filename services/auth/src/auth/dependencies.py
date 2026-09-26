@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 import asyncpg
@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from auth.config import Settings, get_settings
 from auth.repository import ClientRepository
-from auth.schemas import Role, TokenPayload
+from auth.schemas import TokenPayload
 from auth.security import decode_access_token
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -50,14 +50,3 @@ def get_token_payload(
 
 
 TokenPayloadDep = Annotated[TokenPayload, Depends(get_token_payload)]
-
-
-def require_roles(*roles: Role) -> Callable[[TokenPayload], TokenPayload]:
-    """Usage: `Depends(require_roles(Role.CORPORATION))`."""
-
-    def checker(payload: TokenPayloadDep) -> TokenPayload:
-        if payload.role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-        return payload
-
-    return checker

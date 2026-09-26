@@ -31,15 +31,11 @@ The image is built from the repository root, since the uv workspace lockfile liv
 | POST   | `/auth/register` | Create a client (`email`, `password`, `role`) |
 | POST   | `/auth/login`    | Get an access token                          |
 | GET    | `/auth/me`       | Current client (requires `Bearer` token)     |
+| GET    | `/auth/verify`   | Forward auth for the API gateway: `200` with `X-Client-Id` / `X-Client-Role` headers, or `401` |
 | GET    | `/health`        | Liveness probe                               |
 
 Token payload: `client_id`, `role` (`hero` / `corporation`), `exp`.
 
-Role-based access for new endpoints:
-
-```python
-@router.post("/vacancies", dependencies=[Depends(require_roles(Role.CORPORATION))])
-```
 
 ## Tests
 

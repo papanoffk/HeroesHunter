@@ -1,3 +1,10 @@
+x-db-env: &db-env
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_USER: ${DB_USER:-admin}
+  DB_PASSWORD: ${DB_PASSWORD:-password}
+  DB_NAME: ${DB_NAME:-hh-db}
+
 x-auth-common: &auth-common
   build:
     context: .
@@ -5,12 +12,29 @@ x-auth-common: &auth-common
   env_file:
     - path: ./services/auth/.env
       required: false
-  environment:
-    DB_HOST: postgres
-    DB_PORT: 5432
-    DB_USER: ${DB_USER:-admin}
-    DB_PASSWORD: ${DB_PASSWORD:-password}
-    DB_NAME: ${DB_NAME:-hh-db}
+  environment: *db-env
+  networks:
+    - hh-network
+
+x-heroes-common: &heroes-common
+  build:
+    context: .
+    dockerfile: services/heroes/Dockerfile
+  env_file:
+    - path: ./services/heroes/.env
+      required: false
+  environment: *db-env
+  networks:
+    - hh-network
+
+x-corporations-common: &corporations-common
+  build:
+    context: .
+    dockerfile: services/corporations/Dockerfile
+  env_file:
+    - path: ./services/corporations/.env
+      required: false
+  environment: *db-env
   networks:
     - hh-network
 
@@ -52,6 +76,44 @@ services:
       - "8000:8000"
     depends_on:
       auth-migrate:
+        condition: service_completed_successfully
+
+  heroes-migrate:
+    <<: *heroes-common
+    container_name: hh-heroes-migrate
+    command: ["heroes-migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  heroes:
+    <<: *heroes-common
+    container_name: hh-heroes
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    depends_on:
+      heroes-migrate:
+        condition: service_completed_successfully
+
+  corporations-migrate:
+    <<: *corporations-common
+    container_name: hh-corporations-migrate
+    command: ["corporations-migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  corporations:
+    <<: *corporations-common
+    container_name: hh-corporations
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
+    depends_on:
+      corporations-migrate:
         condition: service_completed_successfully
 
 networks:
