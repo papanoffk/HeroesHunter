@@ -38,6 +38,17 @@ x-corporations-common: &corporations-common
   networks:
     - hh-network
 
+x-missions-common: &missions-common
+  build:
+    context: .
+    dockerfile: services/missions/Dockerfile
+  env_file:
+    - path: ./services/missions/.env
+      required: false
+  environment: *db-env
+  networks:
+    - hh-network
+
 services:
   postgres:
     image: postgres:17
@@ -114,6 +125,25 @@ services:
       - "8002:8000"
     depends_on:
       corporations-migrate:
+        condition: service_completed_successfully
+
+  missions-migrate:
+    <<: *missions-common
+    container_name: hh-missions-migrate
+    command: ["missions-migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  missions:
+    <<: *missions-common
+    container_name: hh-missions
+    restart: unless-stopped
+    ports:
+      - "8003:8000"
+    depends_on:
+      missions-migrate:
         condition: service_completed_successfully
 
 networks:
