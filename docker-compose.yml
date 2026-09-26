@@ -257,5 +257,20 @@ services:
       notifications:
         condition: service_healthy
 
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: hh-frontend
+    restart: unless-stopped
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/public:/usr/share/nginx/html:ro
+    ports:
+      - "3000:80"
+    networks:
+      - hh-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+
 networks:
   hh-network: 
