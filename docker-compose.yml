@@ -49,6 +49,17 @@ x-missions-common: &missions-common
   networks:
     - hh-network
 
+x-resumes-common: &resumes-common
+  build:
+    context: .
+    dockerfile: services/resumes/Dockerfile
+  env_file:
+    - path: ./services/resumes/.env
+      required: false
+  environment: *db-env
+  networks:
+    - hh-network
+
 services:
   postgres:
     image: postgres:17
@@ -144,6 +155,25 @@ services:
       - "8003:8000"
     depends_on:
       missions-migrate:
+        condition: service_completed_successfully
+
+  resumes-migrate:
+    <<: *resumes-common
+    container_name: hh-resumes-migrate
+    command: ["resumes-migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  resumes:
+    <<: *resumes-common
+    container_name: hh-resumes
+    restart: unless-stopped
+    ports:
+      - "8004:8000"
+    depends_on:
+      resumes-migrate:
         condition: service_completed_successfully
 
 networks:
