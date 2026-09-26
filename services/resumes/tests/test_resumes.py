@@ -9,8 +9,10 @@ from fastapi.testclient import TestClient
 
 from resumes.config import Settings
 from resumes.db import create_pool
+from resumes.events import RESUME_INVITED, EventPublisher
 from resumes.repository import AlreadyInvitedError, ResumeRepository
 from resumes.schemas import Role
+from conftest import RecordingPublisher
 
 HeadersFactory = Callable[[UUID, Role], dict[str, str]]
 
@@ -237,3 +239,33 @@ def test_concurrent_invitations_do_not_duplicate_corporation(
     assert client.get(f"/v1/resumes/{resume_uuid}", headers=hero_headers).json()["new_invitations_corp_uuids"] == [
         str(corp)
     ]
+
+
+def test_invitation_publishes_event_for_resume_owner(
+    client: TestClient,
+    hero: UUID,
+    hero_headers: dict[str, str],
+    make_headers: HeadersFactory,
+    publisher: RecordingPublisher,
+) -> None:
+    resume = create_resume(client, hero_headers)
+    corp = uuid4()
+
+    assert invite(client, resume, corp, make_headers) == 204
+    assert invite(client, resume, corp, make_headers) == 409
+
+    assert publisher.events == [
+        (RESUME_INVITED, {"recipient_uuid": hero, "resume_uuid": UUID(resume["resume_uuid"]), "corp_uuid": corp})
+    ]
+
+
+def test_publisher_failure_is_logged_not_raised(caplog: pytest.LogCaptureFixture) -> None:
+    class BrokenExchange:
+        async def publish(self, *args: Any, **kwargs: Any) -> None:
+            raise ConnectionError("broker is down")
+
+    publisher = EventPublisher(connection=None, exchange=BrokenExchange(), timeout=1)  # type: ignore[arg-type]
+
+    asyncio.run(publisher.publish(RESUME_INVITED, {"recipient_uuid": uuid4()}))
+
+    assert "Failed to publish resume.invited event" in caplog.text

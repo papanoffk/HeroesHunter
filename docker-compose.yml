@@ -5,6 +5,9 @@ x-db-env: &db-env
   DB_PASSWORD: ${DB_PASSWORD:-password}
   DB_NAME: ${DB_NAME:-hh-db}
 
+x-rabbit-env: &rabbit-env
+  RABBITMQ_URL: amqp://${RABBIT_USER:-admin}:${RABBIT_PASSWORD:-password}@rabbitmq:5672/
+
 x-auth-common: &auth-common
   build:
     context: .
@@ -45,7 +48,8 @@ x-missions-common: &missions-common
   env_file:
     - path: ./services/missions/.env
       required: false
-  environment: *db-env
+  environment:
+    <<: [*db-env, *rabbit-env]
   networks:
     - hh-network
 
@@ -56,7 +60,8 @@ x-resumes-common: &resumes-common
   env_file:
     - path: ./services/resumes/.env
       required: false
-  environment: *db-env
+  environment:
+    <<: [*db-env, *rabbit-env]
   networks:
     - hh-network
 
@@ -79,6 +84,26 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-hh-db}"]
       interval: 5s
       timeout: 3s
+      retries: 5
+  
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: hh-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:-password}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./data/rabbitmq:/var/lib/rabbitmq
+    networks:
+      - hh-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
       retries: 5
 
   auth-migrate:
@@ -156,6 +181,8 @@ services:
     depends_on:
       missions-migrate:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
 
   resumes-migrate:
     <<: *resumes-common
@@ -175,6 +202,26 @@ services:
     depends_on:
       resumes-migrate:
         condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+
+  notifications:
+    build:
+      context: .
+      dockerfile: services/notifications/Dockerfile
+    container_name: hh-notifications
+    restart: unless-stopped
+    env_file:
+      - path: ./services/notifications/.env
+        required: false
+    environment: *rabbit-env
+    ports:
+      - "8005:8000"
+    networks:
+      - hh-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
 networks:
   hh-network: 

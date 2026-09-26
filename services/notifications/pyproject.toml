@@ -1,21 +1,15 @@
 [project]
-name = "missions"
+name = "notifications"
 version = "0.1.0"
-description = "Missions service: publishing missions and hero responses"
+description = "Notifications service: delivers events from RabbitMQ to clients over WebSocket"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "aio-pika>=10.0.1",
-    "asyncpg>=0.31.0",
     "fastapi>=0.141.1",
-    "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.15.0",
     "uvicorn[standard]>=0.54.0",
-    "yoyo-migrations>=9.0.0",
 ]
-
-[project.scripts]
-missions-migrate = "missions.migrate:main"
 
 [build-system]
 requires = ["uv_build>=0.11,<0.12"]
@@ -29,5 +23,3 @@ dev = [
     "httpx2>=2.13.1",
     "pytest>=9.1.1",
 ]
-
-

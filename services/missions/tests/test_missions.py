@@ -9,8 +9,10 @@ from fastapi.testclient import TestClient
 
 from missions.config import Settings
 from missions.db import create_pool
+from missions.events import MISSION_RESPONDED, EventPublisher
 from missions.repository import AlreadyRespondedError, MissionRepository
 from missions.schemas import Role
+from conftest import RecordingPublisher
 
 HeadersFactory = Callable[[UUID, Role], dict[str, str]]
 
@@ -225,3 +227,36 @@ def test_concurrent_responses_do_not_duplicate_hero(
     assert client.get(f"/v1/missions/{mission_uuid}", headers=corp_headers).json()["new_respondents_uuids"] == [
         str(hero)
     ]
+
+
+def test_respond_publishes_event_for_mission_owner(
+    client: TestClient,
+    corp: UUID,
+    corp_headers: dict[str, str],
+    make_headers: HeadersFactory,
+    publisher: RecordingPublisher,
+) -> None:
+    mission = create_mission(client, corp_headers)
+    hero = uuid4()
+
+    assert respond(client, mission, hero, make_headers) == 204
+    assert respond(client, mission, hero, make_headers) == 409
+
+    assert publisher.events == [
+        (
+            MISSION_RESPONDED,
+            {"recipient_uuid": corp, "mission_uuid": UUID(mission["missions_uuid"]), "hero_uuid": hero},
+        )
+    ]
+
+
+def test_publisher_failure_is_logged_not_raised(caplog: pytest.LogCaptureFixture) -> None:
+    class BrokenExchange:
+        async def publish(self, *args: Any, **kwargs: Any) -> None:
+            raise ConnectionError("broker is down")
+
+    publisher = EventPublisher(connection=None, exchange=BrokenExchange(), timeout=1)  # type: ignore[arg-type]
+
+    asyncio.run(publisher.publish(MISSION_RESPONDED, {"recipient_uuid": uuid4()}))
+
+    assert "Failed to publish mission.responded event" in caplog.text

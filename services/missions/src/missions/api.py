@@ -1,14 +1,16 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 
 from missions.dependencies import (
     MissionRepositoryDep,
     OptionalPrincipalDep,
     OwnedMissionDep,
+    PublisherDep,
     require_roles,
 )
+from missions.events import MISSION_RESPONDED
 from missions.repository import AlreadyRespondedError, Mission, MissionNotFoundError
 from missions.schemas import (
     CreateMissionRequest,
@@ -102,11 +104,19 @@ async def respond(
     mission_uuid: UUID,
     principal: Annotated[Principal, Depends(require_roles(Role.HERO))],
     repo: MissionRepositoryDep,
+    publisher: PublisherDep,
+    background_tasks: BackgroundTasks,
 ) -> Response:
     try:
-        await repo.respond(mission_uuid, principal.client_id)
+        owner_uuid = await repo.respond(mission_uuid, principal.client_id)
     except MissionNotFoundError:
         raise NOT_FOUND from None
     except AlreadyRespondedError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already responded") from None
+    # Sent after the response: the response is already stored, a notification is best-effort.
+    background_tasks.add_task(
+        publisher.publish,
+        MISSION_RESPONDED,
+        {"recipient_uuid": owner_uuid, "mission_uuid": mission_uuid, "hero_uuid": principal.client_id},
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -63,6 +63,15 @@ Missions are sorted newest first (`created_at DESC`).
 `/view` body: `{"respondents_uuids": [...]}`. Only uuids present in `new_respondents_uuids`
 are moved (order is kept), unknown ones are ignored, so the call is idempotent.
 
+## Events
+
+After a successful `POST /v1/missions/{mission_uuid}/respond` the service publishes `mission.responded` to the RabbitMQ topic exchange
+`heroes_hunter.events` with `recipient_uuid` (mission owner), `mission_uuid`, `hero_uuid` and `occurred_at`. The `notifications` service delivers it
+to the recipient over WebSocket.
+
+Publishing is best-effort and happens after the response is sent: if RabbitMQ is unavailable,
+the error is logged and the request still succeeds. RabbitMQ is required at startup.
+
 ## Tests
 
 Tests run against a real Postgres: a throwaway schema is created and migrated before

@@ -1,4 +1,5 @@
 from collections.abc import Callable, Iterator
+from typing import Any
 from uuid import UUID, uuid4
 
 import psycopg
@@ -6,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from psycopg import sql
 
-from missions import migrate
+from missions import main, migrate
 from missions.config import Settings, get_settings
 from missions.main import create_app
 from missions.schemas import Role
@@ -29,8 +30,30 @@ def settings() -> Iterator[Settings]:
     get_settings.cache_clear()
 
 
+class RecordingPublisher:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, dict[str, Any]]] = []
+
+    async def publish(self, routing_key: str, payload: dict[str, Any]) -> None:
+        self.events.append((routing_key, payload))
+
+    async def close(self) -> None:
+        pass
+
+
 @pytest.fixture
-def client(settings: Settings) -> Iterator[TestClient]:
+def publisher(monkeypatch: pytest.MonkeyPatch) -> RecordingPublisher:
+    publisher = RecordingPublisher()
+
+    async def connect(_: Settings) -> RecordingPublisher:
+        return publisher
+
+    monkeypatch.setattr(main, "connect_publisher", connect)
+    return publisher
+
+
+@pytest.fixture
+def client(settings: Settings, publisher: RecordingPublisher) -> Iterator[TestClient]:
     with psycopg.connect(settings.dsn(), autocommit=True) as conn:
         conn.execute(sql.SQL("TRUNCATE {}.missions").format(sql.Identifier(settings.db_schema)))
     with TestClient(create_app()) as client:

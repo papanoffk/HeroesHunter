@@ -97,21 +97,22 @@ class MissionRepository:
             "DELETE FROM missions WHERE missions_uuid = $1 RETURNING true", missions_uuid
         ) is not None
 
-    async def respond(self, missions_uuid: UUID, hero_uuid: UUID) -> None:
+    async def respond(self, missions_uuid: UUID, hero_uuid: UUID) -> UUID:
+        """Returns the mission owner to notify."""
         # The condition is re-checked on the locked row, so concurrent responses can't duplicate a hero.
-        updated = await self._conn.fetchval(
+        owner_uuid = await self._conn.fetchval(
             """
             UPDATE missions
             SET new_respondents_uuids = array_append(new_respondents_uuids, $2)
             WHERE missions_uuid = $1
               AND NOT ($2 = ANY(new_respondents_uuids) OR $2 = ANY(respondents_uuids))
-            RETURNING true
+            RETURNING owner_uuid
             """,
             missions_uuid,
             hero_uuid,
         )
-        if updated:
-            return
+        if owner_uuid is not None:
+            return owner_uuid
         if await self.get(missions_uuid) is None:
             raise MissionNotFoundError
         raise AlreadyRespondedError

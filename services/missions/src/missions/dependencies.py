@@ -6,6 +6,7 @@ import asyncpg
 from fastapi import Depends, Header, HTTPException, Request, status
 from pydantic import ValidationError
 
+from missions.events import EventPublisher
 from missions.repository import Mission, MissionRepository
 from missions.schemas import Principal, Role
 
@@ -24,6 +25,13 @@ def get_mission_repository(conn: Annotated[asyncpg.Connection, Depends(get_conne
 
 
 MissionRepositoryDep = Annotated[MissionRepository, Depends(get_mission_repository)]
+
+
+def get_publisher(request: Request) -> EventPublisher:
+    return request.app.state.publisher
+
+
+PublisherDep = Annotated[EventPublisher, Depends(get_publisher)]
 
 
 def get_principal(client_id: ClientIdHeader = None, role: ClientRoleHeader = None) -> Principal:

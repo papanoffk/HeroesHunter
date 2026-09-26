@@ -1,14 +1,16 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 
 from resumes.dependencies import (
     OptionalPrincipalDep,
     OwnedResumeDep,
+    PublisherDep,
     ResumeRepositoryDep,
     require_roles,
 )
+from resumes.events import RESUME_INVITED
 from resumes.repository import AlreadyInvitedError, Resume, ResumeNotFoundError
 from resumes.schemas import (
     CreateResumeRequest,
@@ -96,11 +98,19 @@ async def invite(
     resume_uuid: UUID,
     principal: Annotated[Principal, Depends(require_roles(Role.CORPORATION))],
     repo: ResumeRepositoryDep,
+    publisher: PublisherDep,
+    background_tasks: BackgroundTasks,
 ) -> Response:
     try:
-        await repo.invite(resume_uuid, principal.client_id)
+        owner_uuid = await repo.invite(resume_uuid, principal.client_id)
     except ResumeNotFoundError:
         raise NOT_FOUND from None
     except AlreadyInvitedError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already invited") from None
+    # Sent after the response: the invitation is already stored, a notification is best-effort.
+    background_tasks.add_task(
+        publisher.publish,
+        RESUME_INVITED,
+        {"recipient_uuid": owner_uuid, "resume_uuid": resume_uuid, "corp_uuid": principal.client_id},
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
