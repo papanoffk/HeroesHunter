@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heroes Hunter</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">HEROES<span>HUNTER</span></div>
+    <div class="session hidden" id="session">
+      <span class="ws-status" id="ws-status" data-state="off" title="Notifications WebSocket">WS: off</span>
+      <span class="badge" id="me-role"></span>
+      <span class="muted" id="me-email"></span>
+      <button class="ghost" id="logout">Выйти</button>
+    </div>
+  </header>
+
+  <!-- Auth -->
+  <main id="auth-view" class="auth hidden">
+    <section class="card auth-card">
+      <div class="tabs" id="auth-tabs">
+        <button class="tab active" data-mode="login">Вход</button>
+        <button class="tab" data-mode="register">Регистрация</button>
+      </div>
+      <form id="auth-form" class="form">
+        <div class="role-switch">
+          <label><input type="radio" name="role" value="hero" checked> Герой</label>
+          <label><input type="radio" name="role" value="corporation"> Корпорация</label>
+        </div>
+        <label>Email<input name="email" type="email" required autocomplete="username"></label>
+        <label>Пароль<input name="password" type="password" required autocomplete="current-password"></label>
+        <p class="hint" id="auth-hint"></p>
+        <button type="submit" class="primary" id="auth-submit">Войти</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- App -->
+  <main id="app-view" class="app hidden">
+    <nav class="tabs" id="nav"></nav>
+    <div class="layout">
+      <section id="content"></section>
+      <aside class="card feed">
+        <div class="feed-head">
+          <h3>Уведомления</h3>
+          <button class="ghost small" id="ws-toggle">Переподключить</button>
+        </div>
+        <ul id="feed" class="feed-list"><li class="muted">Пока тихо…</li></ul>
+      </aside>
+    </div>
+  </main>
+
+  <div id="toasts" class="toasts"></div>
+
+  <details class="api-log card">
+    <summary>API log</summary>
+    <ul id="api-log"></ul>
+  </details>
+</body>
+</html>
